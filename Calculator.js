@@ -1,7 +1,7 @@
 Ext.define('Calculator', {
 
     config: {
-        keywords: '',
+        keywords: [],
         bucketBy: '',
         aggregateBy: ''
     },

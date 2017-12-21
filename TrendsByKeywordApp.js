@@ -156,7 +156,7 @@ Ext.define('TrendsByKeywordApp', {
             },
             calculatorType: 'Calculator',
             calculatorConfig: {
-                keywords: this.getSetting('keywords').split(','),
+                keywords: this._getKeywordsSetting(),
                 bucketBy: this.getSetting('bucketBy'),
                 aggregateBy: this.getSetting('aggregateBy')
             },
@@ -207,9 +207,18 @@ Ext.define('TrendsByKeywordApp', {
         }
     },
 
-    _getFilters: function () {
-        var queries = [];
+    _getKeywordsSetting: function() {
+        return this.getSetting('keywords').split(',');
+    },
 
+    _getFilters: function () {
+        var keywords = this._getKeywordsSetting();
+        var queries = [Rally.data.wsapi.Filter.or(_.flatten(_.map(keywords, function(keyword) {
+            return [
+                { property: 'Name', operator: 'contains', value: keyword },
+                { property: 'Description', operator: 'contains', value: keyword },
+            ];
+        })))];
 
         if (this._isByRelease()) {
             queries.push({
