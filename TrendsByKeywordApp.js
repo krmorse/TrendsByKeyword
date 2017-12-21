@@ -113,6 +113,24 @@ Ext.define('TrendsByKeywordApp', {
                             }
                         }
                     }
+                },
+                {
+                    ptype: 'rallygridboardactionsmenu',
+                    menuItems: [{
+                        text: 'Export to CSV...',
+                        handler: function() {
+                            window.location = Rally.ui.gridboard.Export.buildCsvExportUrl(this.down('rallygridboard').getGridOrBoard());
+                        },
+                        scope: this
+                    }],
+                    buttonConfig: {
+                        iconCls: 'icon-export',
+                        toolTipConfig: {
+                            html: 'Export',
+                            anchor: 'top',
+                            hideDelay: 0
+                        }
+                    }
                 }],
                 context: context,
                 modelNames: modelNames,
@@ -144,7 +162,6 @@ Ext.define('TrendsByKeywordApp', {
             },
             chartConfig: {
                 chart: { type: 'area' },
-                // legend: { enabled: this._isByRelease() },
                 title: {
                     text: ''
                 },
@@ -179,7 +196,7 @@ Ext.define('TrendsByKeywordApp', {
     },
 
     _getChartFetch: function () {
-        return _.compact(['AcceptedDate', 'PlanEstimate', 'Release', 'Name', 'Description']);
+        return _.compact(['FormattedID', 'Name', 'Description', 'AcceptedDate', 'PlanEstimate', 'Release', ]);
     },
 
     _getChartSort: function () {
@@ -192,6 +209,7 @@ Ext.define('TrendsByKeywordApp', {
 
     _getFilters: function () {
         var queries = [];
+
 
         if (this._isByRelease()) {
             queries.push({
