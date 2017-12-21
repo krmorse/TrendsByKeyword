@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trends by Keyword</title>
+
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function () {
+                Ext.define('Calculator', {
+
+    config: {
+        keywords: '',
+        bucketBy: '',
+        aggregateBy: ''
+    },
+
+    constructor: function (config) {
+        this.initConfig(config);
+    },
+
+    prepareChartData: function (store) {
+        var groupedData = this._groupData(store.getRange()),
+            categories = _.keys(groupedData);
+
+        var seriesData = _.reduce(this.keywords, function(accum, keyword) {
+            accum[keyword] = [];
+            return accum;
+        }, {});
+
+        _.each(categories, function(category) {
+            var data = groupedData[category];
+
+            _.each(this.keywords, function(keyword) {
+                var val = 0;
+                var matcher = new RegExp(keyword, 'gi');
+                _.each(data, function(item) {
+                    var name = item.get('Name'),
+                        description = item.get('Description');
+                    if (matcher.test(name) || matcher.test(description)) {
+                        val += this.aggregateBy === 'count' ? 1 : (item.get('PlanEstimate') || 0);
+                    }
+                }, this);
+                seriesData[keyword].push(val); 
+            }, this);
+        }, this);
+
+        return {
+            categories: categories,
+            series: _.map(this.keywords, function(keyword) {
+                return {
+                    name: keyword,
+                    data: seriesData[keyword]
+                };
+            })
+        };
+    },
+
+    _groupData: function (records) {
+        return _.groupBy(records, function (record) {
+            var endDate = record.get('AcceptedDate');
+            if (this.bucketBy === 'month') {
+                return moment(endDate).startOf('month').format('MMM \'YY');
+            } else if (this.bucketBy === 'quarter') {
+                return moment(endDate).startOf('quarter').format('YYYY [Q]Q');
+            } else if (this.bucketBy === 'release') {
+                return record.get('Release')._refObjectName;
+            } else if (this.bucketBy === 'year') {
+                return moment(endDate).startOf('year').format('YYYY');
+            }
+        }, this);
+    }
+});
+
+                Ext.define('TrendsByKeywordApp', {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+
+    layout: 'fit',
+    autoScroll: false,
+
+    requires: [
+        'Calculator'
+    ],
+
+    config: {
+        defaultSettings: {
+            keywords: '',
+            aggregateBy: 'points',
+            bucketBy: 'release',
+            query: ''
+        }
+    },
+
+    launch: function () {
+        if (!this.getSetting('keywords')) {
+            Rally.ui.notify.Notifier.showError({ message: 'No keywords specified.  Please edit settings to continue.' });
+   
+        } else {
+            this._addChart();
+        }
+    },
+
+    getSettingsFields: function () {
+        return [
+            {
+                name: 'keywords',
+                xtype: 'rallytextfield',
+                plugins: ['rallyfieldvalidationui'],
+                fieldLabel: 'Keywords',
+                allowBlank: false
+            },
+            {
+                name: 'aggregateBy',
+                xtype: 'rallycombobox',
+                plugins: ['rallyfieldvalidationui'],
+                fieldLabel: 'Aggregate By',
+                displayField: 'name',
+                valueField: 'value',
+                editable: false,
+                allowBlank: false,
+                width: 300,
+                store: {
+                    fields: ['name', 'value'],
+                    data: [
+                        { name: 'Points', value: 'points' },
+                        { name: 'Count', value: 'count' }
+                    ]
+                },
+                lastQuery: ''
+            },
+            {
+                name: 'bucketBy',
+                xtype: 'rallycombobox',
+                plugins: ['rallyfieldvalidationui'],
+                fieldLabel: 'Bucket By',
+                displayField: 'name',
+                valueField: 'value',
+                editable: false,
+                allowBlank: false,
+                store: {
+                    fields: ['name', 'value'],
+                    data: [
+                        { name: 'Month', value: 'month' },
+                        { name: 'Quarter', value: 'quarter' },
+                        { name: 'Release', value: 'release' },
+                        { name: 'Year', value: 'year' }
+                    ]
+                },
+                lastQuery: ''
+            },
+            {
+                type: 'query'
+            }
+        ];
+    },
+
+    _addChart: function () {
+        var context = this.getContext(),
+            whiteListFields = ['Milestones', 'Tags'],
+            modelNames = ['HierarchicalRequirement','Defect'],
+            gridBoardConfig = {
+                xtype: 'rallygridboard',
+                toggleState: 'chart',
+                chartConfig: this._getChartConfig(),
+                plugins: [{
+                    ptype: 'rallygridboardinlinefiltercontrol',
+                    showInChartMode: true,
+                    inlineFilterButtonConfig: {
+                        stateful: true,
+                        stateId: context.getScopedStateId('filters'),
+                        filterChildren: false,
+                        modelNames: modelNames,
+                        inlineFilterPanelConfig: {
+                            quickFilterPanelConfig: {
+                                defaultFields: [],
+                                addQuickFilterConfig: {
+                                    whiteListFields: whiteListFields
+                                }
+                            },
+                            advancedFilterPanelConfig: {
+                                advancedFilterRowsConfig: {
+                                    propertyFieldConfig: {
+                                        whiteListFields: whiteListFields
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }],
+                context: context,
+                modelNames: modelNames,
+                storeConfig: {
+                    filters: this._getFilters()
+                }
+            };
+
+        this.add(gridBoardConfig);
+    },
+
+    _getChartConfig: function () {
+        return {
+            xtype: 'rallychart',
+            storeType: 'Rally.data.wsapi.artifact.Store',
+            storeConfig: {
+                context: this.getContext().getDataContext(),
+                limit: Infinity,
+                fetch: this._getChartFetch(),
+                sorters: this._getChartSort(),
+                pageSize: 2000,
+                models: ['HierarchicalRequirement', 'Defect']
+            },
+            calculatorType: 'Calculator',
+            calculatorConfig: {
+                keywords: this.getSetting('keywords').split(','),
+                bucketBy: this.getSetting('bucketBy'),
+                aggregateBy: this.getSetting('aggregateBy')
+            },
+            chartConfig: {
+                chart: { type: 'area' },
+                // legend: { enabled: this._isByRelease() },
+                title: {
+                    text: ''
+                },
+                yAxis: {
+                    min: 0,
+                    title: {
+                        text: this._getYAxisLabel()
+                    },
+                },
+                plotOptions: {
+                    area: {
+                        stacking: 'normal'
+                    }
+                }
+            }
+        };
+    },
+
+    onTimeboxScopeChange: function () {
+        this.callParent(arguments);
+
+        var gridBoard = this.down('rallygridboard');
+        if (gridBoard) {
+            gridBoard.destroy();
+        }
+        this._addChart();
+    },
+
+    _getYAxisLabel: function () {
+        var estimateUnitName = this.getContext().getWorkspace().WorkspaceConfiguration.ReleaseEstimateUnitName;
+        return this.getSetting('aggregateBy') === 'count' ? 'Count' : estimateUnitName;
+    },
+
+    _getChartFetch: function () {
+        return _.compact(['AcceptedDate', 'PlanEstimate', 'Release', 'Name', 'Description']);
+    },
+
+    _getChartSort: function () {
+        if (this._isByRelease()) {
+            return [{ property: 'Release.ReleaseDate', direction: 'ASC' }];
+        } else {
+            return [{ property: 'CreationDate', direction: 'ASC' }];
+        }
+    },
+
+    _getFilters: function () {
+        var queries = [];
+
+        if (this._isByRelease()) {
+            queries.push({
+                property: 'Release',
+                operator: '!=',
+                value: null
+            });
+        }
+
+        var timeboxScope = this.getContext().getTimeboxScope();
+        if (timeboxScope) {
+            queries.push(timeboxScope.getQueryFilter());
+        }
+        if (this.getSetting('query')) {
+            queries.push(Rally.data.QueryFilter.fromQueryString(this.getSetting('query')));
+        }
+        return queries;
+    },
+
+    _isByRelease: function () {
+        return this.getSetting('bucketBy') === 'release';
+    }
+});
+
+
+            Rally.launchApp('TrendsByKeywordApp', {
+                name:"Trends by Keyword",
+	            parentRepos:""
+            });
+
+        });
+    </script>
+
+
+
+    <style type="text/css">
+        .app {
+  /* Add app styles here */
+}
+
+    </style>
+</head>
+<body>
+</body>
+</html>

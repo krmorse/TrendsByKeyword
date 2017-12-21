@@ -1,0 +1,13 @@
+{
+    "name": "Trends by Keyword",
+    "className": "TrendsByKeywordApp",
+    "server": "https://rally1.rallydev.com",
+    "sdk": "2.1",
+    "javascript": [
+        "Calculator.js",
+        "TrendsByKeywordApp.js"
+    ],
+    "css": [
+        "app.css"
+    ]
+}
