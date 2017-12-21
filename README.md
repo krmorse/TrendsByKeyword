@@ -1,6 +1,4 @@
-# PI Throughput/Velocity Chart
-
-[![Build Status](https://travis-ci.org/RallyCommunity/PIVelocity.png?branch=master)](https://travis-ci.org/RallyCommunity/PIVelocity)
+# Trends by Keyword
 
 This app plots the velocity or throughput of portfolio items based on their ActualEndDate.  Metrics can be calculated using a variety of rollup fields (LeafStoryPlanEstimateTotal, RefinedEstmate, Count, etc.).  The app can be configured for any level of the portfolio item hierarchy and the x-axis granularity is configurable as well.  This app includes the standard filtering component to enable further slicing and dicing of data.
 
