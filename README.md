@@ -1,6 +1,6 @@
 # Trends by Keyword
 
-This app plots an area chart of stories and defects matching specified keywords.  The chart shows a trend over time, and the granularity of the x-axis is totally configurable (month, release, quarter, etc.)
+This app plots an area chart of stories and defects matching specified keywords.  The chart shows a trend over time, and the granularity of the x-axis is totally configurable (month, release, quarter, etc.).  The data is crazy filterable thanks to the built-in advanced filtering component, and you can export your data for finer inspection too.
 
 ![](images/screenshot.png)
 
