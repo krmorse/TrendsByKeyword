@@ -10,6 +10,9 @@ Once the app is installed, use the gear menu on the app panel and select "Edit A
 
 ![](images/settings.png "Settings Screenshot")
 
+#### Keywords
+Enter a comma separated list of the keywords you'd like to search for.
+
 #### Aggregate By
 Pick how to aggregate the data- by count or plan estimate total.
 
